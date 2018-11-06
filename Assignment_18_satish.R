@@ -1,72 +1,163 @@
-#decision tree
-input<- Example_WearableComputing_weight_lifting_exercises_biceps_curl_variations1
-View(input)
-install.packages("caTools")
-library(caTools)
+
+#Ques.1. Use the below given data set
+
+View(weight_lifting_exercises)
+str(weight_lifting_exercises)
+weight_lifting_exercises<-data.frame(weight_lifting_exercises[,-c(11:35,49:58,68:82,86:100,102:111,124:138,140:149)])
+
+str(weight_lifting_exercises)
+summary(weight_lifting_exercises)
+
+weightTrain<-weight_lifting_exercises[1:2012,]
+weightTest<-weight_lifting_exercises[2013:4024,]
+summary(weightTrain)
+names(weightTrain)
+
+
+#Ques.2. Perform the below given activities:
+
+# a. Create classification model using different decision trees.
+weightTrain<-data.frame(weightTrain[,-c(11:35,49:58,68:82,86:100,102:111,124:138,140:149)])
+library(caret)
+library(Hmisc)
+weightTrain$raw_timestamp_part_1<-impute(weightTrain$raw_timestamp_part_1,mean)
+weightTrain$raw_timestamp_part_2<-impute(weightTrain$raw_timestamp_part_2,mean)
+weightTrain$cvtd_timestamp<-impute(weightTrain$cvtd_timestamp,mean)
+weightTrain$new_window<-impute(weightTrain$new_window,mean)
+weightTrain$num_window<-impute(weightTrain$num_window,mean)
+weightTrain$roll_belt<-impute(weightTrain$roll_belt,mean)
+weightTrain$pitch_belt<-impute(weightTrain$pitch_belt,mean)
+weightTrain$yaw_belt<-impute(weightTrain$yaw_belt,mean)
+summary(weightTrain)
+str(weightTrain)
+
+weightTrain$cvtd_timestamp<-as.integer(weightTrain$cvtd_timestamp)
+weightTrain$new_window<-as.integer(weightTrain$new_window)
+library(tree)
+tree<-tree(classe~. , 
+           data = weightTrain)
+plot(tree,pretty = 0.1)
+text(tree,pretty = 1.2)
+summary(tree)
+
+library(caret)
+pred <- predict(tree,weightTrain,type='class')
+str(pred)
+dim(pred)
+dim(weightTest$classe)
+
+weightTest$classe<-as.factor(weightTest$classe)
+dim(weightTest$classe)
+table(weightTest$classe,pred)
+
+length(pred)
+length(weightTest$classe)
+confusionMatrix(pred,weightTest$classe)
+#.........
+
+install.packages("rpart")
+library(rpart)
+fit1 <- rpart(classe~.,data=weightTrain[,-1]) 
+class(fit1)
+summary(fit1)
+
+rpart.plot::rpart.plot(fit1)
+
+pred1<-predict(fit1,weightTrain,type = "class")
+summary(pred1)
+dim(pred1)
+weightTest$classe<-as.factor(weightTest$classe)
+table(weightTest$classe,pred1)
+confusionMatrix(weightTest$classe,pred1)
+
+
+
+# b. Verify model goodness of fit.
+#........for pred.....
+weightTest$classe<-as.factor(weightTest$classe)
+dim(weightTest$classe)
+table(weightTest$classe,pred)
+
+length(pred)
+length(weightTest$classe)
+confusionMatrix(pred,weightTest$classe)
+
+
+#...for fit1....
+weightTest$classe<-as.factor(weightTest$classe)
+table(weightTest$classe,pred1)
+confusionMatrix(weightTest$classe,pred1)
+
+
+# c. Apply all the model validation techniques.
+
+set.seed(3)
 install.packages('tree')
 library(tree)
-set.seed(1)
-split<- sample.split(input$user_name, SplitRatio = 0.70)
-inputTrain<- subset(input, split == TRUE)
-inputTest<- subset(input, split == FALSE)
-table(input$user_name)
-table(inputTrain$user_name)
-table(inputTest$user_name)
-prop.table(table(inputTrain$user_name)+table(inputTest$user_name))
-modelClassTree<- tree(user_name~raw_timestamp_part_1+raw_timestamp_part_2+cvtd_timestamp+new_window+num_window+roll_belt+pitch_belt+yaw_belt+
-total_accel_belt+gyros_belt_x+gyros_belt_y+gyros_belt_z+accel_belt_x+accel_belt_y+accel_belt_z+magnet_belt_x+magnet_belt_y+magnet_belt_z+roll_arm+
-pitch_arm+yaw_arm+total_accel_arm+gyros_arm_x+gyros_arm_y+gyros_arm_z+accel_arm_x+accel_arm_y+accel_arm_z+magnet_arm_x+magnet_arm_y+magnet_arm_z+
-roll_dumbbell+pitch_dumbbell+yaw_dumbbell+total_accel_dumbbell+gyros_dumbbell_x+gyros_dumbbell_y+gyros_dumbbell_z+accel_dumbbell_x+accel_dumbbell_y+
-accel_dumbbell_z+magnet_dumbbell_x+magnet_dumbbell_y+magnet_dumbbell_z+roll_forearm+pitch_forearm+yaw_forearm+total_accel_forearm+gyros_forearm_x+
-gyros_forearm_y+gyros_forearm_z+accel_forearm_x+accel_forearm_y+accel_forearm_z+magnet_forearm_x+magnet_forearm_y+magnet_forearm_z+classe, data = inputTrain)
-plot(modelClassTree)
-text(modelClassTree, pretty = 0, cex = 0.75)
-pred<- predict(modelClassTree, newdata = inputTest, type = "class")
-conf<- table(inputTest$user_name, pred)
-conf
-oaa<- (conf[1,1]+conf[2,2]+conf[3,3]+conf[4,4]+conf[5,5])/sum(conf)
-oaa
+cv.weight<-cv.tree(tree,FUN = prune.misclass)    #cv->cross validation
+cv.weight_lifting_exercises<-cv.tree(tree,FUN = prune.misclass)
+names(cv.weight)
+cv.weight
 
-#pruning
-train<- sample(1:nrow(input), 1000)
-input.test<- input[-train,]
-High.test<- High[-train]
-library(tree)
-tree.input1<- tree(High~.-user_name, input, subset = train)
-tree.pred<- predict(tree.input1, input.test, type = 'class')
-table(tree.pred, High.test)
-(86+57/200)
-summary(tree.input1)
-set.seed(3)
-cv.input<- cv.tree(tree.input1, FUN = prune.misclass)
-names(cv.input)
-cv.input
 par(mfrow = c(1,2))
-plot(cv.input$size, cv.input$dev, type = 'b', col = "red", lwd = 2)
-plot(cv.input$k, cv.input$dev, type = 'b', col = "blue", lwd = 2)
-prune.input<- prune.misclass(tree.input1, best = 9)
-plot(prune.input)
-text(prune.input, pretty = 0)
-tree.pred1<- predict(prune.input, input.test, type = 'class')
-table(tree.pred1, High.test)                     
-#(94+60)/2
-#random forest, bagging
+plot(cv.weight$size,cv.weight$dev,type = 'b',col = 'red')
+
+prune.weight<-prune.misclass(tree,best = 9)
+plot(prune.weight)
+text(prune.weight,pretty = 0)
+
+weightTrain$cvtd_timestamp<-as.integer(weightTrain$cvtd_timestamp)
+weightTrain$new_window<-as.integer(weightTrain$new_window)
+tree.pred1<-predict(prune.weight,weightTrain,type = 'class')
+table(tree.pred1,weightTest)
+
+
+
+#............Random forest.........
 library(randomForest)
 set.seed(1)
-bag.input<- randomForest(High~.-user_name, input, subset = train, mtry = 10, importance = TRUE)
-dim(input)
-importance(bag.input)
-varImpPlot(bag.input, col = 'red', pch = 10, cex = 1.25)
-bag.input
-test.pred.bag<- predict(bag.input, newdata = input[-train, ], type = 'class')
-table(test.pred.bag, High.test)
-#(96+66)/2
-set.seed(1)
-rf.input<- randomForest(High~.-user_name, input, subset = train, mtry = 3, importance = TRUE)
-dim(input)
-importance(rf.input)
-varImpPlot(rf.input, col = 'blue', pch = 10, cex = 1.25)
-rf.input
-test.pred.rf<- predict(rf.input, newdata = input[-train, ], type = 'class')
-table(test.pred.rf, High.test)
-#(98+63)/2
+a.weight_lifting_exercises<-randomForest(classe~.,weight_lifting_exercises,
+                                         subset = weightTrain,mtry = 3,importance = TRUE)
+rf.Carseats<-randomForest(High~. -Sales,Carseats,subset = train,mtry = 3,importance = TRUE)
+dim(Carseats)
+importance(a.weight_lifting_exercises)
+
+varImpPlot(a.weight_lifting_exercises,col = 'blue',pch = 10, cex = 1.25)
+
+a.weight_lifting_exercises
+
+test.pred.rf<-predict(a.weight_lifting_exercises, newdata = weight_lifting_exercises[-weightTrain,],type = 'class')
+table(test.pred.rf,weightTest)
+
+
+#.........adaboost..........
+
+install.packages(adabag)
+library(adabag)
+set.seed(300)
+weight_lifting_exercises$classe<-as.character(weight_lifting_exercises$classe)
+weight_adaboost<-boosting(classe~., data = weight_lifting_exercises)
+
+p.weight_adaboost<-predict(weight_adaboost,weight_lifting_exercises)
+head(p.weight_adaboost)
+head(p.weight_adaboost$class)
+p.weight_adaboost$confusion
+set.seed(300)
+car_adaboost_cv<-boosting.cv(classe,data = weight_lifting_exercises)
+car_adaboost_cv$confusion
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
